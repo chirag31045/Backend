@@ -332,6 +332,85 @@ app.post('/api/payment',async(req,res)=>{
     }
 })
 
+
+
+// monthly total order
+
+app.get("/api/order/total-orders",async(req,res)=>{
+    try{
+        const total=await Order.countDocuments({isCart:true});
+        res.json({totalOrders:total})
+    }
+    catch(err){
+        res.status(500).json({error:err.message})
+
+    }
+})
+
+// monthly total revenue
+app.get("/api/order/monthly-revenue",async(req,res)=>{
+    try{
+        const currentMonthStart=new Date(new Date().getFullYear(),new Date().getMonth(),1)
+        const revenue=await Order.aggregate([
+            {
+            $match:{
+            
+                createdAt:{$gte:currentMonthStart},
+                payment:"success"
+            }
+            },
+            {
+                $group:{
+                    _id:null,
+                    totalRevenue:{$sum: "$totalPrice"}
+                }
+            }
+        ])
+        console.log("revenu : ",revenue)
+        res.json({monthlyRevenue: revenue[0]?.totalRevenue || 0})
+    }catch(err){
+        res.status(500).json({error:err.message})
+    }
+})
+
+// total items solds
+app.get('/api/order/items-solds',async(req,res)=>{
+    try{
+        const result=await Order.aggregate([
+            {
+                $match:{
+                    isCart:true
+                }
+            },
+            {
+                $project:{
+                    dishCount:{$size :"$dishes"}
+                }
+            },
+            {
+                $group:{
+                    _id:null,
+                    totalItemsSolds:{$sum:"$dishCount"}
+                }
+            }
+            
+
+        ])
+        res.json({totalItemsSolds:result[0]?.totalItemsSolds || 0})
+
+    }catch(err){
+        res.status(500).json({error:err.message})
+    }
+})
+
+
+
+
+
+
+
+
+
 const port=7878;
 app.listen(port,"0.0.0.0",()=>{
     console.log(`Server running http:localhost://${port}`)
